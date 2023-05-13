@@ -1,0 +1,6 @@
+jax>=0.3.25
+pyspark>=2.4.8
+numpy>=1.21.6
+sentence_transformers>=2.2.2
+jaxlib>=0.4.7
+pandas>=1.0.5
