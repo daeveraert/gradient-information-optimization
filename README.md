@@ -10,12 +10,12 @@ be used to select a subset of training data that gives similar or superior perfo
 ## Installation
 
 Installable via pip:
-```
+```bash
 pip install grad-info-opt
 ``` 
 Or install directly form the repository:
 
-```
+```bash
 git clone git@github.com:daeveraert/gradient-information-optimization.git
 cd gradient-information-optimization
 pip install -e .
@@ -35,8 +35,10 @@ Direct installation will require you to install additional dependencies listed b
 
 ## Quick Start
 Here is a simple 2D demonstration of how to use GIO with visualization:
-```
+```python
 from GIO import GIOKL
+import numpy as np
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 # Create some data
@@ -53,6 +55,9 @@ def getXTest():
     np.random.seed(5)
     x, y = np.random.multivariate_normal(mean, cov, 100).T
     return jnp.array([[x[i],y[i]] for i in range(len(x))])
+
+X = getX()
+X_test = getXTest()
 
 # Initialize class
 gio_kl = GIOKL.GIOKL(uniform_low=0, uniform_high=8, uniform_start_size=100, dim=2)
@@ -76,11 +81,18 @@ plt.ylabel("Dimension 2")
 plt.legend()
 plt.show()
 ```
+<p align="center">
+  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/images/readme_ex1.png" width="45%">
+&nbsp; &nbsp; &nbsp; &nbsp;
+  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/images/readme_ex2.png" width="45%">
+</p>
 
 Here is a more complex example for scale applications, reading and using a CSV that stores embeddings and data, using quantization-explosion, and Spark:
-```
+```python
 from GIO import GIOKL
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import pyspark.sql.functions as F
 
 # Initialize class
 gio_kl = GIOKL.GIOKL(uniform_low=-1, uniform_high=1, uniform_start_size=20, dim=768)
@@ -93,7 +105,7 @@ model_train, model_X, transformed_train, transformed_X = gio_kl.quantize(train_d
 
 X = jnp.array(model_X.clusterCenters())
 train = jnp.array(model_train.clusterCenters())
-centroids_df = spark.createDataFrame(data=[(i, each.tolist()) for i, each in enumerate(model_train.clusterCenters())], schema=["id", "centroid"])
+centroids_df = gio_kl.spark.createDataFrame(data=[(i, each.tolist()) for i, each in enumerate(model_train.clusterCenters())], schema=["id", "centroid"])
 
 # Perform the Algorithm
 W, kl_divs, _ = gio_kl.fit(train, X, max_iter=300, stopping_criterion='sequential_increase_tolerance', v_init='jump')
@@ -111,6 +123,7 @@ plt.xlabel("Iterations")
 plt.ylabel("KL Divergence")
 plt.show()
 ```
+
 
 ## Available Options
 `GIOKL.fit` takes the following arguments:

@@ -188,7 +188,7 @@ class GIOKL(GIO_super):
             # STOPPING CRITERIA
             if total_iter > max_iter:
                 break
-            print(kl_dist - kl_dist_prev, kl_dist, kl_dist_prev)
+
             if stop_criterion == "increase" and kl_dist - kl_dist_prev > 0:
                 break
             elif stop_criterion == "max_resets" and kl_dist - kl_dist_prev > 0 and num_resets == max_resets:
