@@ -82,9 +82,9 @@ plt.legend()
 plt.show()
 ```
 <p align="center">
-  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/readme_ex1.png" width="50%">
+  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/readme_ex1.png" width="49%">
 &nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/readme_ex2.png" width="50%">
+  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/readme_ex2.png" width="49%">
 </p>
 
 Here is a more complex example for scale applications, reading and using a CSV that stores embeddings and data, using quantization-explosion, and Spark:
