@@ -149,6 +149,7 @@ plt.show()
 - `v_init`: how to initialize v in gradients descent, one of the following: 'mean', 'prev_opt', 'jump'. Default is 'mean'
 - `grad_desc_iter`: the number of iterations to use in gradient descent. Default is 50
 - `discard_nearest_for_xy`: discard nearest in the xy calculation of KL divergence, for use when X and the train set are the same, comes at the cost of efficiency. Default is False
+- `lr`: Learning rate for gradient descent. Default is 0.01
 
 ## Citing GIO
 If you use GIO in a publication or blog, please cite this software.
