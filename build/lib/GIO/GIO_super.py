@@ -24,9 +24,6 @@ class GIO_super:
     def fit(self, train, X, *arg):
         pass
 
-    def continue_fit(self, train, X, W, v_opt, just_reset, scale_factor, num_resets, increases, adder, kl_divs):
-        pass
-
     def quantize(self, df_train, df_x, quantize_into):
         pass
 

@@ -122,7 +122,7 @@ class GIOKL(GIO_super):
         else:
             return jnp.array([each for each in np.random.uniform(low=self.uniform_low,high=self.uniform_high,size=(self.uniform_start_size,self.dim))])
 
-    def fit(self, train, X, D=None, k=5, max_iter=100, stop_criterion="increase", min_difference=0, resets_allowed=False, max_resets=2, max_data_size=1, min_kl=0, max_sequential_increases=3, random_init_pct=0, random_restart_prob=0, scale_factor="auto", v_init='mean', grad_desc_iter=50, discard_nearest_for_xy=False, normalize=True):
+    def fit(self, train, X, D=None, k=5, max_iter=100, stop_criterion="increase", min_difference=0, resets_allowed=False, max_resets=2, max_data_size=1, min_kl=0, max_sequential_increases=3, random_init_pct=0, random_restart_prob=0, scale_factor="auto", v_init='mean', grad_desc_iter=50, discard_nearest_for_xy=False, normalize=True, lr=0.01):
         """Perform GIO
         :param train: training data
         :param X: target data
@@ -142,6 +142,7 @@ class GIOKL(GIO_super):
         :param v_init: how to initialize v in gradients descent, one of the following: 'mean', 'prev_opt', 'jump'
         :param grad_desc_iter: the number of iterations in gradient descent
         :param discard_nearest_for_xy: discard nearest in the xy calculation
+        :param lr: Learning rate for gradient descent
         :return: selected data, kl divergences, (v, scale_factor, just_reset, num_resets, increases, adder, kl_divs)
         """
         if not random_init_pct and D is None:
@@ -173,9 +174,9 @@ class GIOKL(GIO_super):
         while True:
             # Warmup, reset or random restart
             if i == 0 or just_reset or random.random() < random_restart_prob:
-                v = self.gradient_descend(X, W, v, scale_factor, k, grad_desc_iter * 3)
+                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter * 3, lr=lr, k=k)
             else:
-                v = self.gradient_descend(X, W, v, scale_factor, k, grad_desc_iter)
+                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter, lr=lr, k=k)
             idx = self._get_nearest(v, adder)
             minvals = adder[idx]
             adder = jnp.delete(adder, idx, axis=0)
@@ -189,139 +190,53 @@ class GIOKL(GIO_super):
             if total_iter > max_iter:
                 break
 
-            if stop_criterion == "increase" and kl_dist - kl_dist_prev > 0:
-                break
-            elif stop_criterion == "max_resets" and kl_dist - kl_dist_prev > 0 and num_resets == max_resets:
-                break
-            elif stop_criterion == "min_difference" and kl_dist_prev - kl_dist < min_difference:
-                break
-            elif stop_criterion == 'sequential_increase_tolerance' and kl_dist - kl_dist_prev > 0 and increases == max_sequential_increases:
-                break
-            elif stop_criterion == 'min_kl' and kl_dist < min_kl:
-                break
-            elif stop_criterion == 'data_size' and i > int(max_data_size * len(train)):
-                break
-
             if v_init == 'mean':
                 v = jnp.mean(X, axis=0)
             elif v_init == 'jump':
                 v = jnp.array(random.sample(X.tolist(), 1)).squeeze()
 
-            if kl_dist - kl_dist_prev > 0:
-                if just_reset:
-                    increases += 1
-                if resets_allowed:
-                    num_resets += 1
-                    if v_init == 'prev_opt':
-                        v = jnp.mean(X, axis=0)
-                    print("KL Div Increase, Resetting G")
-                    adder = train[:]
-                    i -= 1
-                just_reset = True
-            else:
+            adder, i, just_reset, stop, v, increases = self._test_stop_criterion(v_init, stop_criterion, kl_dist, kl_dist_prev, num_resets, max_resets, min_difference, increases, max_sequential_increases, min_kl, max_data_size, train, X, i, v, just_reset, resets_allowed, adder)
+
+            if stop:
+                break
+            if not just_reset:
                 W = W_tmp
                 kl_divs += [kl_dist]
                 kl_dist_prev = kl_dist
-                just_reset = False
-                increases = 0
-            i += 1
-            total_iter += 1
+                i += 1
+                total_iter += 1
         return W, kl_divs, (v, scale_factor, just_reset, num_resets, increases, adder, kl_divs)
 
-    def continue_fit(self, train, X, W, v_opt, just_reset, scale_factor, num_resets, increases, adder, kl_divs, k=5, max_iter=100, stop_criterion="increase", min_difference=0, max_data_size=1, resets_allowed=False, max_resets=2, min_kl=0, max_sequential_increases=3, random_restart_prob=0, v_init='mean', grad_desc_iter=50, discard_nearest_for_xy=False):
-        """Continue GIO from previous output
-        :param train: training data
-        :param X: target data
-        :param W: already-selected data
-        :param v_opt: previous v_opt
-        :param just_reset: whether or not a reset was just performed
-        :param scale_factor: the existing scale factor
-        :param num_resets: the existing number of resets
-        :param increases: the existing number of increases
-        :param adder: G, the data to select from, minus the data already picked out of it (unless reset)
-        :param kl_divs: an array storing the previous KL divergences
-        :param k: kth nearest neighbor
-        :param max_iter: max iterations for the algorithm
-        :param stop_criterion: a string for the stopping criterion, one of the following:  'increase', 'max_resets', 'min_difference', 'sequential_increase_tolerance', 'min_kl', 'data_size'
-        :param min_difference: the minimum difference between prior and current KL divergence for 'min_difference' stop criterion
-        :param resets_allowed: whether if KL divergence increase, resetting G to the full train is allowed (allows the algorithm to pick duplicates). Must be set to true if the stop criterion is 'max_resets'
-        :param max_resets: the number of resets allowed for the 'max_resets' stop criterion
-        :param max_data_size: the maximum size of data for the 'data_size' stop criterion, as a percentage
-        :param min_kl: the minimum kl divergence for the 'min_kl' stop criterion
-        :param max_sequential_increases: the maximum number of sequential KL divergence increases for the 'sequential_increase_tolerance' stop criterion
-        :param random_restart_prob: probability to extend the gradient descent iterations by 3x to find potentially better extrema. Higher values come at the cost of efficiency
-        :param v_init: how to initialize v in gradients descent, one of the following: 'mean', 'prev_opt', 'jump'
-        :param grad_desc_iter: the number of iterations in gradient descent
-        :param discard_nearest_for_xy: discard nearest in the xy calculation
-        :return: selected data, kl divergences, (v, scale_factor, just_reset, num_resets, increases, adder, kl_divs)
-        """
-        kl_dist_prev = kl_divs[-1]
-
-        if v_init == 'mean':
-            v = jnp.mean(X, axis=0)
-        elif v_init == 'jump':
-            v = jnp.array(random.sample(X.tolist(), 1)).squeeze()
+    def _test_stop_criterion(self, v_init, stop_criterion, kl_dist, kl_dist_prev, num_resets, max_resets, min_difference, increases, max_sequential_increases, min_kl, max_data_size, train, X, i, v, just_reset, resets_allowed, adder):
+        stop = False
+        if stop_criterion == "increase" and kl_dist - kl_dist_prev > 0:
+            stop = True
+        elif stop_criterion == "max_resets" and kl_dist - kl_dist_prev > 0 and num_resets == max_resets:
+            stop = True
+        elif stop_criterion == "min_difference" and kl_dist_prev - kl_dist < min_difference:
+            stop = True
+        elif stop_criterion == 'sequential_increase_tolerance' and kl_dist - kl_dist_prev > 0 and increases == max_sequential_increases:
+            stop = True
+        elif stop_criterion == 'min_kl' and kl_dist < min_kl:
+            stop = True
+        elif stop_criterion == 'data_size' and i > int(max_data_size * len(train)):
+            stop = True
+        if stop:
+            if just_reset:
+                increases += 1
+            if resets_allowed and num_resets < max_resets:
+                num_resets += 1
+                if v_init == 'prev_opt':
+                    v = jnp.mean(X, axis=0)
+                print("KL Div Increase, Resetting G")
+                adder = train[:]
+                i -= 1
+                stop = False
+            just_reset = True
         else:
-            v = v_opt
-
-        i = 0
-        total_iter = 0
-        while True:
-            # Warmup, reset or random restart
-            if just_reset or random.random() < random_restart_prob:
-                v = self.gradient_descend(X, W, v, scale_factor, k, grad_desc_iter * 3)
-            else:
-                v = self.gradient_descend(X, W, v, scale_factor, k, grad_desc_iter)
-            idx = self._get_nearest(v, adder)
-            minvals = adder[idx]
-            adder = jnp.delete(adder, idx, axis=0)
-
-            W_tmp = jnp.concatenate((W, jnp.array(minvals)[jnp.newaxis, :]))
-
-            kl_dist = self.calculate_statistical_distance(X, W_tmp, k, discard_nearest_for_xy=discard_nearest_for_xy)
-            print("KL Distance at iteration " + str(i) + ": " + str(kl_dist))
-
-            # STOPPING CRITERIA
-            if total_iter > max_iter:
-                break
-
-            if stop_criterion == "increase" and kl_dist - kl_dist_prev > 0:
-                break
-            elif stop_criterion == "max_resets" and kl_dist - kl_dist_prev > 0 and num_resets == max_resets:
-                break
-            elif stop_criterion == "min_difference" and kl_dist_prev - kl_dist < min_difference:
-                break
-            elif stop_criterion == 'sequential_increase_tolerance' and kl_dist - kl_dist_prev > 0 and increases == max_sequential_increases:
-                break
-            elif stop_criterion == 'min_kl' and kl_dist < min_kl:
-                break
-            elif stop_criterion == 'data_size' and i > int(max_data_size * len(train)):
-                break
-
-            if v_init == 'mean':
-                v = jnp.mean(X, axis=0)
-            elif v_init == 'jump':
-                v = jnp.array(random.sample(X.tolist(), 1)).squeeze()
-
-            if kl_dist - kl_dist_prev > 0:
-                if just_reset:
-                    increases += 1
-                if resets_allowed:
-                    if v_init == 'prev_opt':
-                        v = jnp.mean(X, axis=0)
-                    print("KL Div Increase, Resetting G")
-                    adder = train[:]
-                    i -= 1
-                just_reset = True
-            else:
-                W = W_tmp
-                kl_divs += [kl_dist]
-                kl_dist_prev = kl_dist
-                just_reset = False
-                increases = 0
-            i += 1
-            total_iter += 1
-        return W, kl_divs, (v, scale_factor, just_reset, num_resets, increases, adder, kl_divs)
+            just_reset = False
+            increases = 0
+        return adder, i, just_reset, stop, v, increases
 
     def _return_kmeans(self, df, k, rseed):
         """Use Spark to perform K-Means

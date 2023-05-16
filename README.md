@@ -1,4 +1,7 @@
 # GIO: Gradient Information Optimization
+<p align="center">
+  <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/process.gif">
+</p>
 
 GIO is a library that implements Gradient Information Optimization (GIO) at scale. GIO is a data selection technique that can
 be used to select a subset of training data that gives similar or superior performance to a model trained on full data.
@@ -34,6 +37,8 @@ Direct installation will require you to install additional dependencies listed b
 
 
 ## Quick Start
+**Note:** GIO uses a Spark context, or if it can't find one, it will create a local one. You may encounter a Spark error before the algorithm runs complaining it cannot find a free port. In this case, executing ```export SPARK_LOCAL_IP="127.0.0.1"``` should resolve the issue.
+
 Here is a simple 2D demonstration of how to use GIO with visualization:
 ```python
 from GIO import GIOKL
