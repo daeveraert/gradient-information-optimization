@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: grad-info-opt
-Version: 0.1.0
+Version: 0.1.1
 Summary: Implementation of Gradient Information Optimization for efficient and scalable training data selection
 Home-page: https://github.com/daeveraert/gradient-information-optimization
 Author: Dante Everaert

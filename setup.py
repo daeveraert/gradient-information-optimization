@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="grad-info-opt",
-    version="0.1.0",
+    version="0.1.1",
     author="Dante Everaert",
     author_email="dante.everaert@berkeley.edu",
     description="Implementation of Gradient Information Optimization for efficient and scalable training data selection",
