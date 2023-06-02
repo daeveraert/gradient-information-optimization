@@ -116,7 +116,7 @@ W, kl_divs, _ = gio_kl.fit(train, X, max_iter=300, stopping_criterion='sequentia
 W = W[20:] # Remove the uniform start
 
 # Explode back to original data and write resulting data
-full_selections_df = gio_kl.explode(W, centroids_df, transformed_train)
+full_selections_df = gio_kl.explode(W, transformed_train, centroids_df)
 full_selections_df.select(F.col("_c0"), F.col("_c1")).write.option("delimiter", "\t").csv(OUTPUT_PATH)
 
 
@@ -127,7 +127,7 @@ plt.xlabel("Iterations")
 plt.ylabel("KL Divergence")
 plt.show()
 ```
-
+**Note:** For quantization, Spark requires a large rpc message size. It is recommended to place ```gio_kl.spark.conf.set("spark.rpc.message.maxSize", "500")```  (or any large number) in the code before calling quantize, if the defaults haven't already been increased.
 
 ## Available Options
 `GIOKL.fit` takes the following arguments:

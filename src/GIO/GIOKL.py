@@ -174,9 +174,9 @@ class GIOKL(GIO_super):
         while True:
             # Warmup, reset or random restart
             if i == 0 or just_reset or random.random() < random_restart_prob:
-                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter * 3, lr=lr, k=k)
+                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter * 3, lr=lr, k=k, discard_nearest_for_xy=discard_nearest_for_xy)
             else:
-                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter, lr=lr, k=k)
+                v = self.gradient_descend(X, W, v, scale_factor, grad_desc_iter, lr=lr, k=k, discard_nearest_for_xy=discard_nearest_for_xy)
             idx = self._get_nearest(v, adder)
             minvals = adder[idx]
             adder = jnp.delete(adder, idx, axis=0)
@@ -195,7 +195,7 @@ class GIOKL(GIO_super):
             elif v_init == 'jump':
                 v = jnp.array(random.sample(X.tolist(), 1)).squeeze()
 
-            adder, i, just_reset, stop, v, increases = self._test_stop_criterion(v_init, stop_criterion, kl_dist, kl_dist_prev, num_resets, max_resets, min_difference, increases, max_sequential_increases, min_kl, max_data_size, train, X, i, v, just_reset, resets_allowed, adder)
+            adder, i, just_reset, stop, v, increases, num_resets = self._test_stop_criterion(v_init, stop_criterion, kl_dist, kl_dist_prev, num_resets, max_resets, min_difference, increases, max_sequential_increases, min_kl, max_data_size, train, X, i, v, just_reset, resets_allowed, adder)
 
             if stop:
                 break
@@ -236,7 +236,7 @@ class GIOKL(GIO_super):
         else:
             just_reset = False
             increases = 0
-        return adder, i, just_reset, stop, v, increases
+        return adder, i, just_reset, stop, v, increases, num_resets
 
     def _return_kmeans(self, df, k, rseed):
         """Use Spark to perform K-Means
@@ -293,8 +293,11 @@ class GIOKL(GIO_super):
         :param path_X: path to target data
         :return: train df, target df
         """
-        df_with_embeddings = self.spark.read.parquet(path)
-        df_X_with_embeddings = self.spark.read.parquet(path_X)
+        new_schema = ArrayType(DoubleType(), containsNull=False)
+        udf_no_null = F.udf(lambda x: x, new_schema)
+
+        df_with_embeddings = self.spark.read.parquet(path).withColumn("features", udf_no_null(F.col("features")))
+        df_X_with_embeddings = self.spark.read.parquet(path_X).withColumn("features", udf_no_null(F.col("features")))
         return df_with_embeddings, df_X_with_embeddings
 
     def explode(self, chosen_centroids, kmeans_transformed_df, kmeans_centroids_df):
