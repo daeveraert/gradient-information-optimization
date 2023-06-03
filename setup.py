@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="grad-info-opt",
-    version="0.1.1",
+    version="0.1.2",
     author="Dante Everaert",
     author_email="dante.everaert@berkeley.edu",
     description="Implementation of Gradient Information Optimization for efficient and scalable training data selection",
@@ -28,6 +28,6 @@ setuptools.setup(
         'pyspark>=2.4.8',
         'numpy>=1.21.6',
         'sentence_transformers>=2.2.2',
-        'jaxlib>=0.4.7',
+        'jaxlib>=0.3.2',
         'pandas>=1.0.5']
 )
