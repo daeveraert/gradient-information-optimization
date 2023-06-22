@@ -3,12 +3,18 @@
   <img alt="" src="https://github.com/daeveraert/gradient-information-optimization/blob/main/images/process.gif">
 </p>
 
-GIO is a library that implements Gradient Information Optimization (GIO) at scale. GIO is a data selection technique that can
+GIO is a library that implements Gradient Information Optimization (GIO) at scale, from the paper <a href=https://arxiv.org/abs/2306.11670>GIO: Gradient Information Optimization for Training Dataset Selection</a>. GIO is a data selection technique that can
 be used to select a subset of training data that gives similar or superior performance to a model trained on full data.
+
+**Paper Abstract**
+
+It is often advantageous to train models on a subset of the available train examples, because the examples are of variable quality or because one would like to train with fewer examples, without sacrificing performance. We present Gradient Information Optimization (GIO), a scalable, task-agnostic approach to this data selection problem that requires only a small set of (unlabeled) examples representing a target distribution. GIO begins from a natural, information-theoretic objective that is intractable in practice. Our contribution is in showing that it can be made highly scalable through a simple relaxation of the objective and a highly efficient implementation. In experiments with machine translation, spelling correction, and image recognition, we show that GIO delivers outstanding results with very small train sets. These findings are robust to different representation models and hyperparameters for GIO itself. GIO is task- and domain-agnostic and can be applied out-of-the-box to new datasets and domains.
+
 
 **Features**:
 - GIO with quantization using K-means.
 - Sentence embedding script to generate embeddings from data to use in GIO
+
 
 ## Installation
 
@@ -31,7 +37,7 @@ Direct installation will require you to install additional dependencies listed b
 - `jax>=0.3.25`
 - `pyspark>=2.4.8`
 - `sentence_transformers>=2.2.2`
-- `jaxlib>=0.4.7`
+- `jaxlib>=0.3.2`
 - `pandas>=1.0.5`
 
 
@@ -152,14 +158,14 @@ plt.show()
 - `lr`: Learning rate for gradient descent. Default is 0.01
 
 ## Citing GIO
-If you use GIO in a publication or blog, please cite this software.
+If you use GIO in a publication, blog or software project, please cite the paper:
 ```
-@software{gradient-information-optimization,
-  author = {Dante Everaert},
-  title = {GIO: Gradient Information Optimization for Training Dataset Selection},
-  url = {https://github.com/daeveraert/gradient-information-optimization},
-  version = {0.1.0},
-  year = {2023},
-  note = {Apache 2.0 License}
+@misc{everaert2023gio,
+      title={GIO: Gradient Information Optimization for Training Dataset Selection}, 
+      author={Dante Everaert and Christopher Potts},
+      year={2023},
+      eprint={2306.11670},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
 }
 ```
